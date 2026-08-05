@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -4316,17 +4317,23 @@ class EcoFlowIntegralEnergySensor(IntegrationSensor):
         enabled_default: bool = True,
     ):
         """Initialize energy sensor from power sensor."""
-        super().__init__(
-            hass=hass,
-            integration_method="left",
-            name=f"{power_sensor.name} Energy",
-            round_digits=4,
-            source_entity=power_sensor.entity_id,
-            unique_id=f"{power_sensor.unique_id}_energy",
-            unit_prefix="k",
-            unit_time="h",
-            max_sub_interval=timedelta(seconds=60),
-        )
+        integration_kwargs = {
+            "integration_method": "left",
+            "name": f"{power_sensor.name} Energy",
+            "round_digits": 4,
+            "source_entity": power_sensor.entity_id,
+            "unique_id": f"{power_sensor.unique_id}_energy",
+            "unit_prefix": "k",
+            "unit_time": "h",
+            "max_sub_interval": timedelta(seconds=60),
+        }
+        # HA 2026.8 removed the hass parameter from IntegrationSensor.__init__
+        # (home-assistant/core#177596). Pass it only when the installed
+        # IntegrationSensor still accepts it, so both pre- and post-2026.8
+        # keep working.
+        if "hass" in inspect.signature(IntegrationSensor.__init__).parameters:
+            integration_kwargs["hass"] = hass
+        super().__init__(**integration_kwargs)
         # Copy device info from power sensor
         self._attr_device_info = power_sensor.device_info
         self._attr_entity_registry_enabled_default = enabled_default
