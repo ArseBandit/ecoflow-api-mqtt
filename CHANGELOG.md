@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.19] - 2026-08-06
+
+### New Features
+
+- **Stream Microinverter generated energy sensor (issue #56)** — Adds a derived
+  solar input power sensor from PV1/PV2 telemetry and an enabled integral energy
+  sensor for Home Assistant energy tracking.
+- **Stream base-load schedule service (issue #55)** — Adds
+  `ecoflow_api.set_base_load_schedule` for controlling schedule time windows and
+  load-power values through `cfgDayResidentLoadList`.
+- **STREAM/BKW main-device command routing (issue #48)** — Resolves the main
+  device serial number and routes REST/MQTT control commands to it while keeping
+  state reads on the configured device.
+
+### Security
+
+- Redacts MQTT credentials from config-entry options and diagnostic payloads.
+
+### Notes
+
+- Multi-device STREAM/BKW command routing should still be confirmed with a
+  real stacked-device setup.
+
 ## [1.10.18] - 2026-06-23
 
 ### New Features
