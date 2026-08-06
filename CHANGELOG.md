@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.20] - 2026-08-06
+
+### Fixed
+
+- **Home Assistant 2026.8 compatibility** — Keeps the
+  `EcoFlowIntegralEnergySensor` compatible with both pre-2026.8 and 2026.8+
+  `IntegrationSensor` constructor signatures by forwarding `hass` only when
+  the installed Home Assistant version accepts it.
+
+### Validation
+
+- Added regression coverage for both constructor signatures and real entity
+  construction with initialized Home Assistant registries.
+
 ## [1.10.19] - 2026-08-06
 
 ### New Features
