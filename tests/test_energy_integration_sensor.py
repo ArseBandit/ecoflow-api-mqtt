@@ -21,6 +21,9 @@ from __future__ import annotations
 from datetime import timedelta
 
 from homeassistant.components.integration.sensor import IntegrationSensor
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from custom_components.ecoflow_api.sensor import EcoFlowIntegralEnergySensor
 
@@ -34,13 +37,17 @@ class _FakePowerSensor:
     device_info = None
 
 
-def test_energy_sensor_can_be_constructed() -> None:
+async def test_energy_sensor_can_be_constructed(tmp_path) -> None:
     """EcoFlowIntegralEnergySensor must construct cleanly against the
     installed IntegrationSensor, regardless of whether it still accepts a
     `hass` keyword argument (pre- vs post-HA-2026.8)."""
     power_sensor = _FakePowerSensor()
 
-    sensor = EcoFlowIntegralEnergySensor(object(), power_sensor, enabled_default=True)
+    hass = HomeAssistant(str(tmp_path))
+    hass.data[dr.DATA_REGISTRY] = dr.DeviceRegistry(hass)
+    await dr.async_load(hass, load_empty=True)
+    await er.async_load(hass, load_empty=True)
+    sensor = EcoFlowIntegralEnergySensor(hass, power_sensor, enabled_default=True)
 
     assert sensor.name == "Test Power Energy"
     assert sensor.unique_id == "test_power_uid_energy"
