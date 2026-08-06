@@ -4544,7 +4544,17 @@ class EcoFlowStreamMicroSolarPowerSensor(EcoFlowBaseEntity, SensorEntity):
         if not values:
             return None
 
-        return round(sum(float(value) for value in values), 1)
+        numeric_values = []
+        for value in values:
+            try:
+                numeric_values.append(float(value))
+            except (TypeError, ValueError):
+                continue
+
+        if not numeric_values:
+            return None
+
+        return round(sum(numeric_values), 1)
 
 
 # ============================================================================
