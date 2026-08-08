@@ -88,8 +88,14 @@ class EcoFlowMQTTClient:
         self._certificate_account = certificate_account or username
         self._quota_topic = f"/open/{self._certificate_account}/{device_sn}/quota"
         self._status_topic = f"/open/{self._certificate_account}/{device_sn}/status"
-        self._set_topic = f"/open/{self._certificate_account}/{self.command_sn}/set"
-        self._set_reply_topic = f"/open/{self._certificate_account}/{self.command_sn}/set_reply"
+        self._set_reply_topics = tuple(
+            dict.fromkeys(
+                (
+                    f"/open/{self._certificate_account}/{self.device_sn}/set_reply",
+                    f"/open/{self._certificate_account}/{self.command_sn}/set_reply",
+                )
+            )
+        )
         
     @property
     def is_connected(self) -> bool:
@@ -198,6 +204,13 @@ class EcoFlowMQTTClient:
             if "version" not in mqtt_command:
                 mqtt_command["version"] = "1.0"
 
+            allowed_target_sns = {self.device_sn, self.command_sn}
+            target_sn = mqtt_command.get("sn")
+            if target_sn not in allowed_target_sns:
+                target_sn = self.command_sn
+            mqtt_command["sn"] = target_sn
+            set_topic = f"/open/{self._certificate_account}/{target_sn}/set"
+
             # Delta Pro (original) MQTT format requires operateType and timestamp
             # Detect by checking for cmdSet inside params (Delta Pro format)
             params = mqtt_command.get("params", {})
@@ -215,10 +228,10 @@ class EcoFlowMQTTClient:
             payload = json.dumps(mqtt_command)
             _LOGGER.debug(
                 "MQTT publish to %s: %s",
-                self._set_topic.split("/")[-2][-4:],  # last 4 chars of SN
+                target_sn[-4:],
                 payload[:200],
             )
-            result = self._client.publish(self._set_topic, payload, qos=1)
+            result = self._client.publish(set_topic, payload, qos=1)
 
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
                 _LOGGER.error("Failed to publish command: rc=%s", result.rc)
@@ -294,8 +307,14 @@ class EcoFlowMQTTClient:
             # Subscribe to topics
             client.subscribe(self._quota_topic, qos=1)
             client.subscribe(self._status_topic, qos=1)
-            client.subscribe(self._set_reply_topic, qos=1)
-            _LOGGER.debug("Subscribed to MQTT topics: %s, %s, %s", self._quota_topic, self._status_topic, self._set_reply_topic)
+            for set_reply_topic in self._set_reply_topics:
+                client.subscribe(set_reply_topic, qos=1)
+            _LOGGER.debug(
+                "Subscribed to MQTT topics: %s, %s, %s",
+                self._quota_topic,
+                self._status_topic,
+                ", ".join(self._set_reply_topics),
+            )
 
             # Notify status callback
             if self.on_status_callback:
@@ -402,7 +421,7 @@ class EcoFlowMQTTClient:
                     status = payload["params"]["status"]
                     _LOGGER.info("Device %s status: %s", self.device_sn, "online" if status == 1 else "offline")
                     
-            elif msg.topic == self._set_reply_topic:
+            elif msg.topic in self._set_reply_topics:
                 # Set reply formats by device type:
                 #   Delta Pro 3:    {"data": {"configOk": true, ...}, "id": 123}
                 #   Delta 2/Plug:   {"data": {"ack": 0}, "id": 123}

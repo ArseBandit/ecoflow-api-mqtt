@@ -17,6 +17,8 @@ from .data_holder import BoundFifoList
 
 _LOGGER = logging.getLogger(__name__)
 
+BKW_DEVICE_SCOPED_PARAMS = frozenset({"cfgRelay2Onoff", "cfgRelay3Onoff"})
+
 
 class EcoFlowDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Class to manage fetching EcoFlow data from API.
@@ -196,7 +198,17 @@ class EcoFlowDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "serial_number": self.device_sn,
         }
 
-    async def async_send_command(self, command: dict) -> bool:
+    def _prepare_command(self, command: dict[str, Any]) -> tuple[dict[str, Any], str]:
+        """Copy a command and select its BKW command target."""
+        prepared = dict(command)
+        params = prepared.get("params")
+        target_sn = self.command_sn
+        if isinstance(params, dict) and BKW_DEVICE_SCOPED_PARAMS.intersection(params):
+            target_sn = self.device_sn
+        prepared["sn"] = target_sn
+        return prepared, target_sn
+
+    async def async_send_command(self, command: dict[str, Any]) -> bool:
         """Send command to device via REST API.
 
         Base implementation uses REST API only.
@@ -210,21 +222,20 @@ class EcoFlowDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         Returns:
             True if command sent successfully
         """
-        if isinstance(command, dict):
-            command["sn"] = self.command_sn
+        command, target_sn = self._prepare_command(command)
 
         _LOGGER.debug(
             "Sending command via REST API for %s: params=%s",
-            self.command_sn[-4:],
+            target_sn[-4:],
             command.get("params", {}),
         )
         result = await self.client.set_device_quota(
-            device_sn=self.command_sn,
+            device_sn=target_sn,
             cmd_code=command,
         )
         _LOGGER.debug(
             "Command sent via REST API for %s: response=%s",
-            self.command_sn[-4:],
+            target_sn[-4:],
             result,
         )
         return True

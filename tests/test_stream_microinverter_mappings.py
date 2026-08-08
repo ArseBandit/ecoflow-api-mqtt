@@ -115,22 +115,16 @@ class BkwMainSnRoutingTest(unittest.TestCase):
     def test_coordinator_defaults_command_sn_to_device_sn(self) -> None:
         source = _source("coordinator.py")
         self.assertIn("self.command_sn = command_sn or device_sn", source)
-        self.assertIn("device_sn=self.command_sn", source)
-        self.assertIn("command[\"sn\"] = self.command_sn", source)
 
-    def test_mqtt_command_topics_use_command_sn(self) -> None:
+    def test_mqtt_keeps_state_topics_on_configured_device(self) -> None:
         source = _source("mqtt_client.py")
         self.assertIn("self.command_sn = command_sn or device_sn", source)
         self.assertIn(
-            "self._set_topic = f\"/open/{self._certificate_account}/{self.command_sn}/set\"",
-            source,
-        )
-        self.assertIn(
-            "self._set_reply_topic = f\"/open/{self._certificate_account}/{self.command_sn}/set_reply\"",
-            source,
-        )
-        self.assertIn(
             "self._quota_topic = f\"/open/{self._certificate_account}/{device_sn}/quota\"",
+            source,
+        )
+        self.assertIn(
+            "self._status_topic = f\"/open/{self._certificate_account}/{device_sn}/status\"",
             source,
         )
 
