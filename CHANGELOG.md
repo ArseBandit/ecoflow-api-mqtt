@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.22] - 2026-08-09
+
+### Fixed
+
+- **Multi-device STREAM/BKW AC relay routing (issue #48)** — Routes AC1 and
+  AC2 commands to the configured physical device while continuing to route
+  backup reserve, operating mode, feed-in, charge/discharge limits, and base
+  load through the resolved main device SN.
+- **Cross-device MQTT acknowledgements** — Correlates command replies by both
+  target device SN and command ID, subscribes to the configured and main-device
+  reply topics, and rejects mixed relay/system command payloads before dispatch.
+
+### Validation
+
+- Added REST and MQTT regression coverage for per-device routing, dual reply
+  topics, mixed-scope rejection, payload immutability, and concurrent commands
+  sharing the same command ID.
+- Verified the merged release candidate with 25 tests and 6 subtests passing,
+  plus Python byte-compilation and Git whitespace checks.
+- The v1.10.21 regression was reproduced on real multi-device BKW hardware;
+  post-release confirmation of this fix is still requested in issue #48.
+
 ## [1.10.21] - 2026-08-06
 
 ### Fixed
