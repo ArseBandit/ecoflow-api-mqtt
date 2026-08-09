@@ -191,10 +191,10 @@ def test_mqtt_subscribes_to_both_distinct_command_reply_topics() -> None:
     }.issubset({topic for topic, _ in transport.subscriptions})
 
 
-@pytest.mark.parametrize("target_sn", ["DEVICE", "MAIN"])
-async def test_mqtt_accepts_ack_from_each_allowed_reply_topic(target_sn: str) -> None:
-    """An ACK from either permitted command target resolves its pending command."""
+async def test_mqtt_ack_resolves_only_its_matching_target_command() -> None:
+    """Concurrent DEVICE and MAIN commands sharing an ID require matching ACKs."""
     loop = asyncio.get_running_loop()
+    transport = RecordingMqttTransport()
     client = EcoFlowMQTTClient(
         username="user",
         password="password",
@@ -203,16 +203,52 @@ async def test_mqtt_accepts_ack_from_each_allowed_reply_topic(target_sn: str) ->
         certificate_account="ACCOUNT",
         loop=loop,
     )
-    reply = loop.create_future()
-    client._pending_acks[42] = reply
+    client._connected = True
+    client._client = transport
 
-    client._on_message(
-        None,
-        None,
-        SimpleNamespace(
-            topic=f"/open/ACCOUNT/{target_sn}/set_reply",
-            payload=b'{"id": 42, "data": {"result": 0}}',
-        ),
+    device_command = asyncio.create_task(
+        client.async_publish_command(
+            {"id": 42, "sn": "DEVICE", "params": {"cfgRelay2Onoff": True}},
+            ack_timeout=1,
+        )
+    )
+    main_command = asyncio.create_task(
+        client.async_publish_command(
+            {"id": 42, "sn": "MAIN", "params": {"backupRatio": 20}},
+            ack_timeout=1,
+        )
     )
 
-    assert await asyncio.wait_for(reply, timeout=0.1) == {"result": 0}
+    try:
+        for _ in range(10):
+            if len(transport.published) == 2:
+                break
+            await asyncio.sleep(0)
+        assert len(transport.published) == 2
+
+        client._on_message(
+            None,
+            None,
+            SimpleNamespace(
+                topic="/open/ACCOUNT/DEVICE/set_reply",
+                payload=b'{"id": 42, "data": {"result": 0}}',
+            ),
+        )
+
+        assert await asyncio.wait_for(asyncio.shield(device_command), 0.1) is True
+        assert not main_command.done()
+
+        client._on_message(
+            None,
+            None,
+            SimpleNamespace(
+                topic="/open/ACCOUNT/MAIN/set_reply",
+                payload=b'{"id": 42, "data": {"result": 0}}',
+            ),
+        )
+        assert await asyncio.wait_for(main_command, 0.1) is True
+    finally:
+        for command in (device_command, main_command):
+            if not command.done():
+                command.cancel()
+        await asyncio.gather(device_command, main_command, return_exceptions=True)

@@ -80,7 +80,9 @@ class EcoFlowMQTTClient:
         self._client: mqtt.Client | None = None
         self._connected = False
         self._reconnect_task: asyncio.Task | None = None
-        self._pending_acks: dict[int, asyncio.Future[dict[str, Any]]] = {}
+        self._pending_acks: dict[
+            tuple[str, int], asyncio.Future[dict[str, Any]]
+        ] = {}
         
         # MQTT topics (correct format: /open/${certificateAccount}/${sn}/...)
         # certificateAccount is typically the user_id (not email)
@@ -88,14 +90,11 @@ class EcoFlowMQTTClient:
         self._certificate_account = certificate_account or username
         self._quota_topic = f"/open/{self._certificate_account}/{device_sn}/quota"
         self._status_topic = f"/open/{self._certificate_account}/{device_sn}/status"
-        self._set_reply_topics = tuple(
-            dict.fromkeys(
-                (
-                    f"/open/{self._certificate_account}/{self.device_sn}/set_reply",
-                    f"/open/{self._certificate_account}/{self.command_sn}/set_reply",
-                )
-            )
-        )
+        self._set_reply_targets = {
+            f"/open/{self._certificate_account}/{self.device_sn}/set_reply": self.device_sn,
+            f"/open/{self._certificate_account}/{self.command_sn}/set_reply": self.command_sn,
+        }
+        self._set_reply_topics = tuple(self._set_reply_targets)
         
     @property
     def is_connected(self) -> bool:
@@ -195,12 +194,19 @@ class EcoFlowMQTTClient:
             return False
 
         ack_future: asyncio.Future[dict[str, Any]] | None = None
+        pending_ack_key: tuple[str, int] | None = None
         cmd_id: int | None = None
         try:
             # Ensure MQTT-required fields are present
             mqtt_command = dict(command)
             if "id" not in mqtt_command:
-                mqtt_command["id"] = int(time.time() * 1000)
+                cmd_id = int(time.time() * 1000)
+                while any(
+                    pending_cmd_id == cmd_id
+                    for _, pending_cmd_id in self._pending_acks
+                ):
+                    cmd_id += 1
+                mqtt_command["id"] = cmd_id
             if "version" not in mqtt_command:
                 mqtt_command["version"] = "1.0"
 
@@ -222,8 +228,17 @@ class EcoFlowMQTTClient:
 
             cmd_id = int(mqtt_command["id"])
             if ack_timeout is not None and self._loop is not None:
+                candidate_ack_key = (target_sn, cmd_id)
+                if candidate_ack_key in self._pending_acks:
+                    _LOGGER.warning(
+                        "MQTT command ID %s for %s is already awaiting a reply",
+                        cmd_id,
+                        target_sn[-4:],
+                    )
+                    return False
                 ack_future = self._loop.create_future()
-                self._pending_acks[cmd_id] = ack_future
+                pending_ack_key = candidate_ack_key
+                self._pending_acks[pending_ack_key] = ack_future
 
             payload = json.dumps(mqtt_command)
             _LOGGER.debug(
@@ -272,8 +287,8 @@ class EcoFlowMQTTClient:
             _LOGGER.error("Error publishing command: %s", err)
             return False
         finally:
-            if cmd_id is not None:
-                self._pending_acks.pop(cmd_id, None)
+            if pending_ack_key is not None:
+                self._pending_acks.pop(pending_ack_key, None)
 
     def _on_connect(
         self,
@@ -421,7 +436,7 @@ class EcoFlowMQTTClient:
                     status = payload["params"]["status"]
                     _LOGGER.info("Device %s status: %s", self.device_sn, "online" if status == 1 else "offline")
                     
-            elif msg.topic in self._set_reply_topics:
+            elif (reply_target_sn := self._set_reply_targets.get(msg.topic)) is not None:
                 # Set reply formats by device type:
                 #   Delta Pro 3:    {"data": {"configOk": true, ...}, "id": 123}
                 #   Delta 2/Plug:   {"data": {"ack": 0}, "id": 123}
@@ -441,7 +456,7 @@ class EcoFlowMQTTClient:
                 # distinguish real success from a silently-dropped publish. This runs
                 # in paho's thread, so hop back onto the main loop.
                 if isinstance(reply_id, int) and self._loop is not None:
-                    future = self._pending_acks.get(reply_id)
+                    future = self._pending_acks.get((reply_target_sn, reply_id))
                     if future is not None and not future.done():
                         self._loop.call_soon_threadsafe(
                             lambda f=future, d=reply_data: (
