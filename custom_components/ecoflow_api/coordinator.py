@@ -203,8 +203,16 @@ class EcoFlowDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         prepared = dict(command)
         params = prepared.get("params")
         target_sn = self.command_sn
-        if isinstance(params, dict) and BKW_DEVICE_SCOPED_PARAMS.intersection(params):
-            target_sn = self.device_sn
+        if isinstance(params, dict):
+            device_scoped_params = BKW_DEVICE_SCOPED_PARAMS.intersection(params)
+            if device_scoped_params and set(params).difference(
+                BKW_DEVICE_SCOPED_PARAMS
+            ):
+                raise ValueError(
+                    "Cannot route mixed device- and system-scoped BKW command parameters"
+                )
+            if device_scoped_params:
+                target_sn = self.device_sn
         prepared["sn"] = target_sn
         return prepared, target_sn
 

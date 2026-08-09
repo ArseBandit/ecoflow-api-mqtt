@@ -42,6 +42,19 @@ class RecordingMqttTransport:
         self.subscriptions.append((topic, qos))
 
 
+class FailingMqttCommandClient:
+    """Record hybrid MQTT dispatch, then force the REST fallback path."""
+
+    def __init__(self) -> None:
+        self.commands: list[dict[str, Any]] = []
+
+    async def async_publish_command(
+        self, command: dict[str, Any], ack_timeout: float | None = None
+    ) -> bool:
+        self.commands.append(command)
+        return False
+
+
 def make_rest_coordinator(
     device_sn: str, command_sn: str
 ) -> EcoFlowDataCoordinator:
@@ -113,6 +126,28 @@ async def test_hybrid_fallback_preserves_device_scoped_relay_target() -> None:
         }
     ]
     assert command == {"sn": "CALLER", "params": {"cfgRelay2Onoff": True}}
+
+
+async def test_hybrid_rejects_mixed_scope_before_rest_or_mqtt_dispatch() -> None:
+    """A relay combined with backupRatio cannot reach either command boundary."""
+    coordinator = make_hybrid_coordinator(device_sn="DEVICE", command_sn="MAIN")
+    mqtt_client = FailingMqttCommandClient()
+    coordinator._mqtt_connected = True
+    coordinator._mqtt_client = mqtt_client
+    command = {
+        "sn": "CALLER",
+        "params": {"cfgRelay2Onoff": True, "backupRatio": 20},
+    }
+
+    with pytest.raises(ValueError, match="mixed device- and system-scoped"):
+        await coordinator.async_send_command(command)
+
+    assert mqtt_client.commands == []
+    assert coordinator.client.calls == []
+    assert command == {
+        "sn": "CALLER",
+        "params": {"cfgRelay2Onoff": True, "backupRatio": 20},
+    }
 
 
 async def test_mqtt_publishes_command_to_target_sn() -> None:
