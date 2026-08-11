@@ -29,6 +29,7 @@ from .const import (
     CONF_SECRET_KEY,
     CONF_UPDATE_INTERVAL,
     DEVICE_TYPE_STREAM_ULTRA,
+    DEVICE_TYPE_STREAM_AC_PRO,
     DEVICE_TYPE_STREAM_ULTRA_X,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
@@ -89,7 +90,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     configured_sn = entry.data[CONF_DEVICE_SN]
     device_type = entry.data.get(CONF_DEVICE_TYPE, "unknown")
     command_sn = configured_sn
-    if device_type in (DEVICE_TYPE_STREAM_ULTRA_X, DEVICE_TYPE_STREAM_ULTRA):
+    if device_type in (DEVICE_TYPE_STREAM_ULTRA_X, DEVICE_TYPE_STREAM_ULTRA, DEVICE_TYPE_STREAM_AC_PRO):
         try:
             main_sn = await client.get_main_device_sn(configured_sn)
             if main_sn:

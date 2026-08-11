@@ -55,6 +55,8 @@ DEVICE_BUTTON_MAP = {
     "stream_ultra_x": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
     "stream_ultra": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
     "Stream Ultra": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
+    "stream_ac_pro": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
+    "Stream AC Pro": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
     "stream_micro_inverter": {},
     "Stream Microinverter": {},
 }
