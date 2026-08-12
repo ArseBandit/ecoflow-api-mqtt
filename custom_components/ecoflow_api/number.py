@@ -525,7 +525,7 @@ STREAM_ULTRA_X_NUMBER_DEFINITIONS = {
         "state_key": "backupReverseSoc",
         "param_key": "cfgBackupReverseSoc",
         "min": 3,
-        "max": 95,
+        "max": 100,
         "step": 1,
         "unit": PERCENTAGE,
         "icon": "mdi:battery-heart",
