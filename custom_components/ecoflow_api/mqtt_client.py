@@ -190,7 +190,7 @@ class EcoFlowMQTTClient:
             ``ack_timeout`` was provided), False otherwise.
         """
         if not self._connected or not self._client:
-            _LOGGER.warning("Cannot publish command: MQTT not connected")
+            _LOGGER.debug("Cannot publish command: MQTT not connected")
             return False
 
         ack_future: asyncio.Future[dict[str, Any]] | None = None
@@ -230,7 +230,7 @@ class EcoFlowMQTTClient:
             if ack_timeout is not None and self._loop is not None:
                 candidate_ack_key = (target_sn, cmd_id)
                 if candidate_ack_key in self._pending_acks:
-                    _LOGGER.warning(
+                    _LOGGER.debug(
                         "MQTT command ID %s for %s is already awaiting a reply",
                         cmd_id,
                         target_sn[-4:],
@@ -249,7 +249,7 @@ class EcoFlowMQTTClient:
             result = self._client.publish(set_topic, payload, qos=1)
 
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
-                _LOGGER.error("Failed to publish command: rc=%s", result.rc)
+                _LOGGER.debug("Failed to publish command via MQTT: rc=%s", result.rc)
                 return False
 
             if ack_future is None:
@@ -258,7 +258,7 @@ class EcoFlowMQTTClient:
             try:
                 reply = await asyncio.wait_for(ack_future, timeout=ack_timeout)
             except asyncio.TimeoutError:
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "MQTT command %s for %s timed out after %.1fs (no set_reply); "
                     "falling back to REST",
                     cmd_id,
@@ -275,8 +275,8 @@ class EcoFlowMQTTClient:
                 or reply.get("ack") == 0
             ):
                 return True
-            _LOGGER.warning(
-                "MQTT command %s for %s rejected by device: %s",
+            _LOGGER.debug(
+                "MQTT command %s for %s rejected by device: %s; falling back to REST",
                 cmd_id,
                 self.device_sn[-4:],
                 reply,
@@ -284,7 +284,7 @@ class EcoFlowMQTTClient:
             return False
 
         except Exception as err:
-            _LOGGER.error("Error publishing command: %s", err)
+            _LOGGER.debug("Error publishing command via MQTT: %s", err)
             return False
         finally:
             if pending_ack_key is not None:
@@ -450,7 +450,7 @@ class EcoFlowMQTTClient:
                 if config_ok is True or ack == 0 or result == 0:
                     _LOGGER.debug("Command reply OK for %s (id=%s): %s", self.device_sn[-4:], reply_id, reply_data)
                 else:
-                    _LOGGER.warning("Command reply for %s (id=%s): %s", self.device_sn[-4:], reply_id, payload)
+                    _LOGGER.debug("Command reply for %s (id=%s): %s", self.device_sn[-4:], reply_id, payload)
 
                 # Resolve a pending ACK future (if any) so async_publish_command can
                 # distinguish real success from a silently-dropped publish. This runs

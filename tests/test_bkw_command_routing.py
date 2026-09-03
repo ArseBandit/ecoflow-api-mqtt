@@ -252,3 +252,60 @@ async def test_mqtt_ack_resolves_only_its_matching_target_command() -> None:
             if not command.done():
                 command.cancel()
         await asyncio.gather(device_command, main_command, return_exceptions=True)
+
+
+async def test_hybrid_fallback_to_rest_does_not_emit_warnings_or_errors(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """MQTT timeout/publish failure during normal REST fallback must not spam warnings/errors."""
+    coordinator = make_hybrid_coordinator(device_sn="DEVICE", command_sn="MAIN")
+    mqtt_client = FailingMqttCommandClient()
+    coordinator._mqtt_connected = True
+    coordinator._mqtt_client = mqtt_client
+    command = {"sn": "CALLER", "params": {"cfgRelay2Onoff": True}}
+
+    with caplog.at_level("WARNING"):
+        await coordinator.async_send_command(command)
+
+    assert coordinator.client.calls == [
+        {
+            "device_sn": "DEVICE",
+            "cmd_code": {"sn": "DEVICE", "params": {"cfgRelay2Onoff": True}},
+        }
+    ]
+    warning_or_error_records = [
+        record for record in caplog.records if record.levelname in ("WARNING", "ERROR")
+    ]
+    assert warning_or_error_records == []
+
+
+async def test_mqtt_command_timeout_does_not_emit_warnings_or_errors(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """MQTT command timeout while awaiting set_reply must log at DEBUG, not WARNING/ERROR."""
+    loop = asyncio.get_running_loop()
+    transport = RecordingMqttTransport()
+    client = EcoFlowMQTTClient(
+        username="user",
+        password="password",
+        device_sn="DEVICE",
+        command_sn="MAIN",
+        certificate_account="ACCOUNT",
+        loop=loop,
+    )
+    client._connected = True
+    client._client = transport
+
+    with caplog.at_level("WARNING"):
+        success = await client.async_publish_command(
+            {"sn": "DEVICE", "params": {"cfgRelay2Onoff": True}},
+            ack_timeout=0.01,
+        )
+
+    assert success is False
+    warning_or_error_records = [
+        record for record in caplog.records if record.levelname in ("WARNING", "ERROR")
+    ]
+    assert warning_or_error_records == []
+
+

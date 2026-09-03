@@ -307,9 +307,9 @@ class EcoFlowHybridCoordinator(EcoFlowDataCoordinator):
                     _LOGGER.debug("Command sent via MQTT for %s", self.device_sn[-4:])
                     return True
                 else:
-                    _LOGGER.warning("MQTT publish failed for %s, falling back to REST API", self.device_sn[-4:])
+                    _LOGGER.debug("MQTT publish failed for %s, falling back to REST API", self.device_sn[-4:])
             except Exception as err:
-                _LOGGER.warning("MQTT command error for %s: %s, falling back to REST API", self.device_sn[-4:], err)
+                _LOGGER.debug("MQTT command error for %s: %s, falling back to REST API", self.device_sn[-4:], err)
 
         # Fallback to REST API (raises on failure)
         _LOGGER.debug("Sending command via REST API for %s", target_sn[-4:])
