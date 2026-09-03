@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.24] - 2026-09-03
+
+### Fixed
+
+- **Eliminate 5-second command delay on STREAM/BKW devices (issue #75)** —
+  Commands for STREAM and BKW series devices (`Stream Ultra`, `Stream Ultra X`,
+  `Stream Microinverter`, `Powerstream Micro Inverter`) now route directly to the
+  REST API rather than attempting MQTT command publish and waiting 5 seconds for
+  a missing `set_reply`. Command latency drops from ~5.2s to ~0.2s, while real-time
+  sensor telemetry continues to stream over MQTT at full speed.
+
+### Validation
+
+- Added unit tests verifying that STREAM devices route commands directly to REST
+  with 0 MQTT dispatch attempts and 0 delay, while non-STREAM devices (e.g. Delta Pro 3)
+  continue trying MQTT first.
+- All 31 tests passed.
+
 ## [1.10.23] - 2026-09-03
 
 ### Fixed
