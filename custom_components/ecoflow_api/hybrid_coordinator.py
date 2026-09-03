@@ -17,10 +17,22 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .api import EcoFlowApiClient, EcoFlowApiError
-from .const import DEVICE_TYPE_STREAM_ULTRA_X, DEVICE_TYPE_STREAM_ULTRA
+from .const import (
+    DEVICE_TYPE_POWERSTREAM_MICRO_INVERTER,
+    DEVICE_TYPE_STREAM_MICRO_INVERTER,
+    DEVICE_TYPE_STREAM_ULTRA,
+    DEVICE_TYPE_STREAM_ULTRA_X,
+)
 from .coordinator import EcoFlowDataCoordinator
 from .data_holder import BoundFifoList
 from .mqtt_client import EcoFlowMQTTClient
+
+STREAM_DEVICE_TYPES: tuple[str, ...] = (
+    DEVICE_TYPE_STREAM_ULTRA_X,
+    DEVICE_TYPE_STREAM_ULTRA,
+    DEVICE_TYPE_STREAM_MICRO_INVERTER,
+    DEVICE_TYPE_POWERSTREAM_MICRO_INVERTER,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -117,7 +129,7 @@ class EcoFlowHybridCoordinator(EcoFlowDataCoordinator):
         # Stream series is more sensitive to broker stalls after EcoFlow maintenance.
         self._mqtt_silence_threshold = (
             MQTT_SILENCE_THRESHOLD_STREAM
-            if device_type in (DEVICE_TYPE_STREAM_ULTRA_X, DEVICE_TYPE_STREAM_ULTRA)
+            if self.is_stream_device
             else MQTT_SILENCE_THRESHOLD
         )
 
@@ -270,6 +282,17 @@ class EcoFlowHybridCoordinator(EcoFlowDataCoordinator):
             await self._mqtt_client.async_disconnect()
             self._mqtt_client = None
 
+    @property
+    def is_stream_device(self) -> bool:
+        """Return whether this coordinator manages a Stream/BKW series device."""
+        device_type = getattr(self, "device_type", None)
+        if not device_type or not isinstance(device_type, str):
+            return False
+        return (
+            device_type in STREAM_DEVICE_TYPES
+            or "stream" in device_type.lower()
+        )
+
     async def async_send_command(self, command: dict[str, Any]) -> bool:
         """Send command to device via MQTT (preferred) or REST API (fallback).
 
@@ -295,7 +318,16 @@ class EcoFlowHybridCoordinator(EcoFlowDataCoordinator):
         # set_reply — wait for it so we can distinguish real success from a
         # broker that ACKed the publish but never delivered it to the device
         # (observed on Stream Ultra X during EcoFlow maintenance; see issue #45).
-        if self._mqtt_connected and self._mqtt_client:
+        #
+        # For STREAM/BKW devices, EcoFlow Cloud does not emit MQTT set_reply and drops
+        # command publishes without executing them on hardware (#45, #75). To eliminate
+        # an unnecessary 5-second timeout penalty on every write, STREAM/BKW devices route
+        # commands directly via the REST API.
+        if (
+            not self.is_stream_device
+            and self._mqtt_connected
+            and self._mqtt_client
+        ):
             ack_timeout = (
                 MQTT_COMMAND_ACK_TIMEOUT if command.get("needAck") else None
             )
@@ -589,7 +621,7 @@ class EcoFlowHybridCoordinator(EcoFlowDataCoordinator):
                             len(changed_fields) - 20,
                         )
 
-                if self.device_type in (DEVICE_TYPE_STREAM_ULTRA_X, DEVICE_TYPE_STREAM_ULTRA):
+                if self.is_stream_device:
                     stream_debug_values = {
                         key: mqtt_data[key]
                         for key in STREAM_BASE_LOAD_DEBUG_FIELDS

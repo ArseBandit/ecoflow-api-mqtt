@@ -9,6 +9,12 @@ from typing import Any
 
 import pytest
 
+from custom_components.ecoflow_api.const import (
+    DEVICE_TYPE_DELTA_PRO_3,
+    DEVICE_TYPE_STREAM_MICRO_INVERTER,
+    DEVICE_TYPE_STREAM_ULTRA,
+    DEVICE_TYPE_STREAM_ULTRA_X,
+)
 from custom_components.ecoflow_api.coordinator import EcoFlowDataCoordinator
 from custom_components.ecoflow_api.hybrid_coordinator import EcoFlowHybridCoordinator
 from custom_components.ecoflow_api.mqtt_client import EcoFlowMQTTClient, mqtt
@@ -67,12 +73,13 @@ def make_rest_coordinator(
 
 
 def make_hybrid_coordinator(
-    device_sn: str, command_sn: str
+    device_sn: str, command_sn: str, device_type: str = DEVICE_TYPE_DELTA_PRO_3
 ) -> EcoFlowHybridCoordinator:
     """Build the real hybrid command path with MQTT deliberately unavailable."""
     coordinator = object.__new__(EcoFlowHybridCoordinator)
     coordinator.device_sn = device_sn
     coordinator.command_sn = command_sn
+    coordinator.device_type = device_type
     coordinator.client = RecordingApiClient()
     coordinator._mqtt_connected = False
     coordinator._mqtt_client = None
@@ -307,5 +314,57 @@ async def test_mqtt_command_timeout_does_not_emit_warnings_or_errors(
         record for record in caplog.records if record.levelname in ("WARNING", "ERROR")
     ]
     assert warning_or_error_records == []
+
+
+@pytest.mark.parametrize(
+    "stream_type",
+    [
+        DEVICE_TYPE_STREAM_ULTRA_X,
+        DEVICE_TYPE_STREAM_ULTRA,
+        DEVICE_TYPE_STREAM_MICRO_INVERTER,
+    ],
+)
+async def test_stream_hybrid_routes_commands_directly_to_rest_without_mqtt_delay(
+    stream_type: str,
+) -> None:
+    """STREAM devices bypass MQTT command publish to eliminate the 5s timeout penalty."""
+    coordinator = make_hybrid_coordinator(
+        device_sn="DEVICE", command_sn="MAIN", device_type=stream_type
+    )
+    mqtt_client = FailingMqttCommandClient()
+    coordinator._mqtt_connected = True
+    coordinator._mqtt_client = mqtt_client
+    command = {"sn": "CALLER", "params": {"cfgRelay2Onoff": True}}
+
+    await coordinator.async_send_command(command)
+
+    # MQTT command publish was never attempted (0 delay)
+    assert mqtt_client.commands == []
+    # REST API was invoked directly
+    assert coordinator.client.calls == [
+        {
+            "device_sn": "DEVICE",
+            "cmd_code": {"sn": "DEVICE", "params": {"cfgRelay2Onoff": True}},
+        }
+    ]
+
+
+async def test_non_stream_hybrid_tries_mqtt_command_first() -> None:
+    """Non-stream devices (e.g. Delta Pro 3) continue to try MQTT first."""
+    coordinator = make_hybrid_coordinator(
+        device_sn="DEVICE", command_sn="MAIN", device_type=DEVICE_TYPE_DELTA_PRO_3
+    )
+    mqtt_client = FailingMqttCommandClient()
+    coordinator._mqtt_connected = True
+    coordinator._mqtt_client = mqtt_client
+    command = {"sn": "DEVICE", "params": {"acOut": True}}
+
+    await coordinator.async_send_command(command)
+
+    # MQTT command publish was attempted
+    assert len(mqtt_client.commands) == 1
+    # Then fell back to REST because FailingMqttCommandClient returned False
+    assert len(coordinator.client.calls) == 1
+
 
 
