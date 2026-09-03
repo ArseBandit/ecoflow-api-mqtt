@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.23] - 2026-09-03
+
+### Fixed
+
+- **Eliminate log flood and disk I/O bottleneck during REST fallback (issue #75)** —
+  Lowered MQTT command timeout, publish failure, and command rejection log entries
+  from `WARNING`/`ERROR` to `DEBUG`. In setups where EcoFlow Cloud does not emit
+  `set_reply` for STREAM/BKW commands (or during normal broker timeouts), the
+  built-in REST fallback succeeds seamlessly without flooding Home Assistant logs
+  or triggering runaway disk I/O queues.
+
+### Validation
+
+- Added regression tests verifying that MQTT publish timeouts and normal REST
+  fallback emit 0 warning or error log records.
+- All 27 tests passed.
+
 ## [1.10.22] - 2026-08-09
 
 ### Fixed
