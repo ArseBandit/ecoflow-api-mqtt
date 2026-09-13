@@ -13,6 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     DEVICE_TYPE_DELTA_PRO_3,
     DEVICE_TYPE_DELTA_PRO_ULTRA,
+    DEVICE_TYPE_STREAM_AC_PRO,
     DEVICE_TYPE_STREAM_MICRO_INVERTER,
     DEVICE_TYPE_STREAM_ULTRA_X,
     DOMAIN,
@@ -55,6 +56,8 @@ DEVICE_BUTTON_MAP = {
     "stream_ultra_x": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
     "stream_ultra": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
     "Stream Ultra": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
+    DEVICE_TYPE_STREAM_AC_PRO: STREAM_ULTRA_X_BUTTON_DEFINITIONS,
+    "Stream AC Pro": STREAM_ULTRA_X_BUTTON_DEFINITIONS,
     "stream_micro_inverter": {},
     "Stream Microinverter": {},
 }

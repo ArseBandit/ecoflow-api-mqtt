@@ -38,6 +38,7 @@ from .const import (
     DEVICE_TYPE_DELTA_PRO_ULTRA,
     DEVICE_TYPE_POWERSTREAM_MICRO_INVERTER,
     DEVICE_TYPE_SMART_PLUG,
+    DEVICE_TYPE_STREAM_AC_PRO,
     DEVICE_TYPE_STREAM_MICRO_INVERTER,
     DEVICE_TYPE_STREAM_ULTRA_X,
     DOMAIN,
@@ -3343,6 +3344,159 @@ STREAM_ULTRA_X_SENSOR_DEFINITIONS = {
 
 
 # ============================================================================
+# Stream AC Pro Sensor Definitions
+# Storage-satellite variant of the STREAM family (BK31 series). Reports the
+# StreamAC quota schema: battery SOC / limits / power flow / feed-in, plus BMS
+# temperatures over MQTT. It has no per-MPPT PV inputs, no Schuko plug metering
+# and no cycles counter, so those Ultra X keys are omitted here.
+# ============================================================================
+STREAM_AC_PRO_SENSOR_DEFINITIONS = {
+    # ============================================================================
+    # BATTERY
+    # ============================================================================
+    "battery_level": {
+        "name": "Battery Level",
+        "key": "cmsBattSoc",
+        "fallback_key": "actSoc",
+        "fallback_on_zero": True,
+        "unit": PERCENTAGE,
+        "device_class": SensorDeviceClass.BATTERY,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:battery",
+    },
+    "backup_reserve_level": {
+        "name": "Backup Reserve Level",
+        "key": "backupReverseSoc",
+        "unit": PERCENTAGE,
+        "device_class": SensorDeviceClass.BATTERY,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:battery-heart",
+    },
+    "max_charge_level": {
+        "name": "Max Charge Level",
+        "key": "cmsMaxChgSoc",
+        "unit": PERCENTAGE,
+        "device_class": SensorDeviceClass.BATTERY,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:battery-charging-100",
+    },
+    "min_discharge_level": {
+        "name": "Min Discharge Level",
+        "key": "cmsMinDsgSoc",
+        "unit": PERCENTAGE,
+        "device_class": SensorDeviceClass.BATTERY,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:battery-low",
+    },
+    # ============================================================================
+    # POWER - Real-time Power Flow
+    # ============================================================================
+    "solar_power": {
+        "name": "Solar Input Power",
+        "key": "powGetPvSum",
+        "unit": UnitOfPower.WATT,
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:solar-power",
+    },
+    "system_load_power": {
+        "name": "System Load Power",
+        "key": "powGetSysLoad",
+        "unit": UnitOfPower.WATT,
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:home-lightning-bolt",
+    },
+    "grid_power": {
+        "name": "Grid Power",
+        "key": "powGetSysGrid",
+        "unit": UnitOfPower.WATT,
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:transmission-tower",
+    },
+    "grid_connection_power": {
+        "name": "Grid Connection Power",
+        "key": "gridConnectionPower",
+        "unit": UnitOfPower.WATT,
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:transmission-tower",
+        # Positive = consuming from grid, Negative = feeding to grid
+    },
+    "battery_power": {
+        "name": "Battery Power",
+        "key": "powGetBpCms",
+        "unit": UnitOfPower.WATT,
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:battery-sync",
+        # Positive = charging, Negative = discharging
+    },
+    # ============================================================================
+    # SYSTEM STATUS
+    # ============================================================================
+    "feed_in_mode": {
+        "name": "Feed-in Control",
+        "key": "feedGridMode",
+        "device_class": SensorDeviceClass.ENUM,
+        "icon": "mdi:transmission-tower-export",
+        "options": ["off", "on"],
+        "value_map": {1: "off", 2: "on"},
+    },
+    "last_update": {
+        "name": "Last Update",
+        "key": "quota_cloud_ts",
+        "device_class": SensorDeviceClass.TIMESTAMP,
+        "icon": "mdi:clock-outline",
+    },
+    # ============================================================================
+    # TEMPERATURE (BMS, via MQTT)
+    # ============================================================================
+    "battery_temperature": {
+        "name": "Battery Temperature",
+        "key": "temp",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:thermometer",
+    },
+    "max_cell_temperature": {
+        "name": "Max Cell Temperature",
+        "key": "bmsMaxCellTemp",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:thermometer-high",
+    },
+    "min_cell_temperature": {
+        "name": "Min Cell Temperature",
+        "key": "bmsMinCellTemp",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:thermometer-low",
+    },
+    "max_mosfet_temperature": {
+        "name": "Max MOSFET Temperature",
+        "key": "bmsMaxMosTemp",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:thermometer-high",
+    },
+    "min_mosfet_temperature": {
+        "name": "Min MOSFET Temperature",
+        "key": "bmsMinMosTemp",
+        "unit": UnitOfTemperature.CELSIUS,
+        "device_class": SensorDeviceClass.TEMPERATURE,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:thermometer-low",
+    },
+}
+
+
+# ============================================================================
 # Powerstream Micro Inverter Sensor Definitions
 # Based on EcoFlow Powerstream API (heartbeat 20_1)
 # Units: batTemp 0.1°C, voltages 0.1V, currents 0.1A, invFreq 0.1Hz, permanentWatts 0.1W
@@ -4289,6 +4443,9 @@ DEVICE_SENSOR_MAP = {
     "Powerstream Micro Inverter": POWERSTREAM_MICRO_INVERTER_SENSOR_DEFINITIONS,
     "powerstream_micro_inverter": POWERSTREAM_MICRO_INVERTER_SENSOR_DEFINITIONS,
     "stream_micro_inverter": STREAM_MICRO_INVERTER_SENSOR_DEFINITIONS,
+    # Stream AC Pro (BK31 series storage satellite) uses its own profile.
+    "stream_ac_pro": STREAM_AC_PRO_SENSOR_DEFINITIONS,
+    "Stream AC Pro": STREAM_AC_PRO_SENSOR_DEFINITIONS,
 }
 
 

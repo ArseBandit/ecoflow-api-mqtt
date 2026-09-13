@@ -20,6 +20,7 @@ from .const import (
     DEVICE_TYPE_DELTA_PRO_3,
     DEVICE_TYPE_DELTA_PRO_ULTRA,
     DEVICE_TYPE_SMART_PLUG,
+    DEVICE_TYPE_STREAM_AC_PRO,
     DEVICE_TYPE_STREAM_MICRO_INVERTER,
     DEVICE_TYPE_STREAM_ULTRA_X,
     DOMAIN,
@@ -292,6 +293,8 @@ DEVICE_SELECT_MAP = {
     DEVICE_TYPE_STREAM_ULTRA_X: STREAM_ULTRA_X_SELECT_DEFINITIONS,
     "stream_ultra": STREAM_ULTRA_X_SELECT_DEFINITIONS,
     "Stream Ultra": STREAM_ULTRA_X_SELECT_DEFINITIONS,
+    DEVICE_TYPE_STREAM_AC_PRO: STREAM_ULTRA_X_SELECT_DEFINITIONS,
+    "Stream AC Pro": STREAM_ULTRA_X_SELECT_DEFINITIONS,
     DEVICE_TYPE_STREAM_MICRO_INVERTER: STREAM_MICRO_INVERTER_SELECT_DEFINITIONS,
     "delta_pro_3": DELTA_PRO_3_SELECT_DEFINITIONS,
     "delta_pro_ultra": DELTA_PRO_ULTRA_SELECT_DEFINITIONS,
@@ -336,7 +339,8 @@ async def async_setup_entry(
         DEVICE_TYPE_DELTA_2_MAX, "delta_2_max", "Delta 2 Max",
     )
     is_stream = device_type in (
-        DEVICE_TYPE_STREAM_ULTRA_X, "stream_ultra_x", "stream_ultra", "Stream Ultra"
+        DEVICE_TYPE_STREAM_ULTRA_X, "stream_ultra_x", "stream_ultra", "Stream Ultra",
+        DEVICE_TYPE_STREAM_AC_PRO, "Stream AC Pro",
     )
     is_powerstream = device_type in (
         DEVICE_TYPE_POWERSTREAM_MICRO_INVERTER,
