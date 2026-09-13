@@ -29,6 +29,7 @@ from .const import (
     DEVICE_TYPE_DELTA_PRO_3,
     DEVICE_TYPE_DELTA_PRO_ULTRA,
     DEVICE_TYPE_SMART_PLUG,
+    DEVICE_TYPE_STREAM_AC_PRO,
     DEVICE_TYPE_STREAM_MICRO_INVERTER,
     DEVICE_TYPE_STREAM_ULTRA_X,
     DOMAIN,
@@ -842,7 +843,7 @@ DEVICE_NUMBER_MAP = {
     DEVICE_TYPE_STREAM_ULTRA_X: STREAM_ULTRA_X_NUMBER_DEFINITIONS,
     "stream_ultra": STREAM_ULTRA_X_NUMBER_DEFINITIONS,
     "Stream Ultra": STREAM_ULTRA_X_NUMBER_DEFINITIONS,
-    "stream_ac_pro": STREAM_ULTRA_X_NUMBER_DEFINITIONS,
+    DEVICE_TYPE_STREAM_AC_PRO: STREAM_ULTRA_X_NUMBER_DEFINITIONS,
     "Stream AC Pro": STREAM_ULTRA_X_NUMBER_DEFINITIONS,
     DEVICE_TYPE_STREAM_MICRO_INVERTER: STREAM_MICRO_INVERTER_NUMBER_DEFINITIONS,
     "delta_pro_3": DELTA_PRO_3_NUMBER_DEFINITIONS,
@@ -887,7 +888,7 @@ async def async_setup_entry(
     )
     is_stream = device_type in (
         DEVICE_TYPE_STREAM_ULTRA_X, "stream_ultra_x", "stream_ultra", "Stream Ultra",
-        "stream_ac_pro", "Stream AC Pro",
+        DEVICE_TYPE_STREAM_AC_PRO, "Stream AC Pro",
     )
     is_smart_plug = device_type in (DEVICE_TYPE_SMART_PLUG, "smart_plug", "Smart Plug S401")
     is_powerstream = device_type in (

@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from .api import EcoFlowApiClient, EcoFlowApiError
 from .const import (
     DEVICE_TYPE_POWERSTREAM_MICRO_INVERTER,
+    DEVICE_TYPE_STREAM_AC_PRO,
     DEVICE_TYPE_STREAM_MICRO_INVERTER,
     DEVICE_TYPE_STREAM_ULTRA,
     DEVICE_TYPE_STREAM_ULTRA_X,
@@ -30,6 +31,7 @@ from .mqtt_client import EcoFlowMQTTClient
 STREAM_DEVICE_TYPES: tuple[str, ...] = (
     DEVICE_TYPE_STREAM_ULTRA_X,
     DEVICE_TYPE_STREAM_ULTRA,
+    DEVICE_TYPE_STREAM_AC_PRO,
     DEVICE_TYPE_STREAM_MICRO_INVERTER,
     DEVICE_TYPE_POWERSTREAM_MICRO_INVERTER,
 )

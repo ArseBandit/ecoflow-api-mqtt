@@ -11,6 +11,7 @@ import pytest
 
 from custom_components.ecoflow_api.const import (
     DEVICE_TYPE_DELTA_PRO_3,
+    DEVICE_TYPE_STREAM_AC_PRO,
     DEVICE_TYPE_STREAM_MICRO_INVERTER,
     DEVICE_TYPE_STREAM_ULTRA,
     DEVICE_TYPE_STREAM_ULTRA_X,
@@ -321,6 +322,7 @@ async def test_mqtt_command_timeout_does_not_emit_warnings_or_errors(
     [
         DEVICE_TYPE_STREAM_ULTRA_X,
         DEVICE_TYPE_STREAM_ULTRA,
+        DEVICE_TYPE_STREAM_AC_PRO,
         DEVICE_TYPE_STREAM_MICRO_INVERTER,
     ],
 )
