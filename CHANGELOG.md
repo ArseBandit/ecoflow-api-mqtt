@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.25] - 2026-09-13
+
+### Added
+
+- **Stream AC Pro device type (#77)** — Adds dedicated support for the EcoFlow Stream AC Pro (BK31 series storage satellite).
+  - Dedicated 16-sensor profile matching the real StreamAC quota schema: battery SOC, backup reserve level, max charge / min discharge levels, real-time power flows (grid, load, battery, solar sum), feed-in mode, and BMS temperatures via MQTT.
+  - Eliminates phantom sensors (per-MPPT PV inputs, plugs, cycles) that previously stayed stuck at 0/None when using the Stream Ultra X profile.
+  - Multi-device BKW main-device SN resolution for command routing.
+  - Direct REST command execution without MQTT delay (#75).
+
+### Changed
+
+- **Stream backup reserve level cap raised to 100% (#77)** — Stream-family devices accept `backupReverseSoc = 100`, allowing users to keep the battery fully charged without forced discharge.
+
+### Validation
+
+- Unit tests for Stream AC Pro direct REST command routing verification.
+- All 32 tests passed.
+
 ## [1.10.24] - 2026-09-03
 
 ### Fixed
