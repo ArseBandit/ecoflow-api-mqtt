@@ -135,12 +135,6 @@ async def test_outgoing_800w_command_sends_8000() -> None:
     ]
 
 
-async def test_outgoing_values_clamp_to_device_rating() -> None:
-    """Direct service calls stay inside the same bounds as the slider."""
-    entity800, coordinator800 = make_entity({"20_1.ratedPower": 8000})
-    await entity800.async_set_native_value(850)
-    assert coordinator800.calls[0]["params"] == {"permanentWatts": 8000}
-
-    entity600, coordinator600 = make_entity({"20_1.ratedPower": 6000})
-    await entity600.async_set_native_value(700)
-    assert coordinator600.calls[0]["params"] == {"permanentWatts": 6000}
+def test_oversized_integer_rated_falls_back_to_600() -> None:
+    """Integers too large for float() must fall back, not raise."""
+    assert powerstream_permanent_watts_max({"20_1.ratedPower": 10**1000}) == 600

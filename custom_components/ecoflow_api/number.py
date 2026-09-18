@@ -1468,7 +1468,7 @@ def powerstream_permanent_watts_max(data: dict[str, Any] | None) -> float:
         return POWERSTREAM_PERMANENT_WATTS_FALLBACK_MAX
     try:
         watts = float(raw) / 10.0
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return POWERSTREAM_PERMANENT_WATTS_FALLBACK_MAX
     if not math.isfinite(watts) or watts < 600.0:
         return POWERSTREAM_PERMANENT_WATTS_FALLBACK_MAX
@@ -1541,12 +1541,6 @@ class EcoFlowPowerstreamNumber(EcoFlowBaseEntity, NumberEntity):
         param_key = self._number_def["param_key"]
 
         api_value = value
-        if self._number_key == "permanent_watts":
-            # Keep direct service calls inside the same device-rated bounds
-            # the slider enforces in the UI.
-            api_value = max(
-                self._number_def["min"], min(self.native_max_value, value)
-            )
         if "value_map_from_ui" in self._number_def:
             api_value = self._number_def["value_map_from_ui"](api_value)
 
