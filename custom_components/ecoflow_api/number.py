@@ -1542,7 +1542,7 @@ class EcoFlowPowerstreamNumber(EcoFlowBaseEntity, NumberEntity):
 
         api_value = value
         if "value_map_from_ui" in self._number_def:
-            api_value = self._number_def["value_map_from_ui"](api_value)
+            api_value = self._number_def["value_map_from_ui"](value)
 
         payload = {
             "sn": device_sn,

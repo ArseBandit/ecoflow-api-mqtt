@@ -11,8 +11,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
-import pytest
-
 from custom_components.ecoflow_api.number import (
     EcoFlowPowerstreamNumber,
     POWERSTREAM_MICRO_INVERTER_NUMBER_DEFINITIONS,
