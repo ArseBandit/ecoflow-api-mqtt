@@ -28,7 +28,14 @@ from custom_components.ecoflow_api.select import (
 FIXTURE = json.loads(
     (Path(__file__).parent / "fixtures" / "issue68_custom_mode.json").read_text()
 )
-DEF = STREAM_ULTRA_X_SELECT_DEFINITIONS["operating_mode"]
+
+# Both Stream Ultra X and Stream AC Pro resolve to the SAME shared operating
+# mode definition: DEVICE_SELECT_MAP maps each device_type (constant + literal
+# alias) to STREAM_ULTRA_X_SELECT_DEFINITIONS. We pass the resolved def per
+# model to exercise the real setup path rather than a single hardcoded one.
+ULTRA_X_DEF = STREAM_ULTRA_X_SELECT_DEFINITIONS["operating_mode"]
+AC_PRO_DEF = STREAM_ULTRA_X_SELECT_DEFINITIONS["operating_mode"]
+assert ULTRA_X_DEF is AC_PRO_DEF, "both models share the same definition"
 
 # Observed model aliases: the constant plus the literal strings accepted by the
 # Stream class selection. Plain "stream_ultra"/"Stream Ultra" is NOT here.
@@ -37,7 +44,9 @@ OBSERVED_DEVICE_TYPES = (DEVICE_TYPE_STREAM_ULTRA_X, "stream_ultra_x",
 
 
 def make_entity(
-    data: dict[str, Any] | None, device_type: str = DEVICE_TYPE_STREAM_ULTRA_X
+    data: dict[str, Any] | None,
+    device_type: str = DEVICE_TYPE_STREAM_ULTRA_X,
+    select_def: dict[str, Any] | None = None,
 ) -> tuple[EcoFlowStreamSelect, SimpleNamespace]:
     """Build the real entity with a fake coordinator (no I/O)."""
     coordinator = SimpleNamespace(
@@ -59,7 +68,9 @@ def make_entity(
     coordinator.async_send_command = fake_send
     coordinator.async_request_refresh = fake_refresh
     entry = SimpleNamespace(entry_id="test_entry")
-    return EcoFlowStreamSelect(coordinator, entry, "operating_mode", DEF), coordinator
+    return EcoFlowStreamSelect(
+        coordinator, entry, "operating_mode", select_def or ULTRA_X_DEF
+    ), coordinator
 
 
 class StreamCustomDisplayTest(unittest.TestCase):
@@ -87,13 +98,17 @@ class StreamCustomDisplayTest(unittest.TestCase):
 
     def test_ac_pro_captured_ai_reports_ai_mode(self) -> None:
         entity, _ = make_entity(
-            dict(FIXTURE["ac_pro_ai"]), device_type=DEVICE_TYPE_STREAM_AC_PRO
+            dict(FIXTURE["ac_pro_ai"]),
+            device_type=DEVICE_TYPE_STREAM_AC_PRO,
+            select_def=AC_PRO_DEF,
         )
         self.assertEqual(entity.current_option, "AI Mode")
 
     def test_ac_pro_captured_custom_reports_custom(self) -> None:
         entity, _ = make_entity(
-            dict(FIXTURE["ac_pro_custom"]), device_type=DEVICE_TYPE_STREAM_AC_PRO
+            dict(FIXTURE["ac_pro_custom"]),
+            device_type=DEVICE_TYPE_STREAM_AC_PRO,
+            select_def=AC_PRO_DEF,
         )
         self.assertEqual(entity.current_option, "Custom")
 

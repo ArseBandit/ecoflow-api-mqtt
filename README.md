@@ -275,13 +275,13 @@ setup-wide setting that applies to both Stream Ultra X and Stream AC Pro. When
 the EcoFlow app uses a Custom charging/discharging schedule, each device reports
 both `operateSelfPoweredOpen` and `operateIntelligentScheduleModeOpen` as
 `false`, and Home Assistant then shows "Custom" instead of Unknown. This was
-observed live on both devices with no schedule tasks set (Ultra X) and during a
-user-confirmed active balanced grid+solar charging task (both models); the
-strategy flags do not change and do not indicate task execution. Selecting
-Custom from Home Assistant is rejected with an error — switch modes in the
-EcoFlow app, as no confirmed command payload for entering Custom exists. This
-integration provides no scheduling control support and the live patch is not
-deployed. Untested models keep the previous Self-Powered/AI Mode-only behavior.
+observed live: with no schedule tasks set on Ultra X, and during a user-confirmed
+active balanced grid+solar charging task on both Ultra X and AC Pro in the same
+linked setup. The strategy flags do not change and do not indicate task
+execution. Selecting Custom from Home Assistant is rejected with an error —
+switch modes in the EcoFlow app, as no confirmed command payload for entering
+Custom exists. This change adds no scheduling controls. Untested models keep the
+previous Self-Powered/AI Mode-only behavior.
 
 ### Smart Plug S401
 

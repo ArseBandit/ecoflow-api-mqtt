@@ -709,7 +709,7 @@ class EcoFlowDelta2Select(EcoFlowBaseEntity, SelectEntity):
 # Device types on which the app "Custom" schedule mode has been observed.
 # Conservative scope for issue #68: Ultra X and AC Pro entities display Custom.
 # Plain "Stream Ultra" (non-X) and untested models are deliberately excluded.
-_ULTRA_X_DEVICE_TYPES = (
+_CUSTOM_DISPLAY_DEVICE_TYPES = (
     DEVICE_TYPE_STREAM_ULTRA_X,
     "stream_ultra_x",
     DEVICE_TYPE_STREAM_AC_PRO,
@@ -754,11 +754,12 @@ class EcoFlowStreamSelect(EcoFlowBaseEntity, SelectEntity):
     Supported devices: STREAM Ultra, STREAM Pro, STREAM AC Pro, STREAM Ultra X,
                       STREAM Ultra (US), STREAM Max
 
-    Display-only Custom mode (issue #68): on Ultra X the EcoFlow app "Custom"
-    charging/discharging schedule reports both known strategy flags as explicit
-    False. Home Assistant displays this as "Custom" but cannot select it: no
-    confirmed command payload exists (other Stream models reject non-Self/AI
-    strategy writes), so selecting Custom raises instead of sending anything.
+    Display-only Custom mode (issue #68): on Ultra X and AC Pro the EcoFlow app
+    "Custom" charging/discharging schedule reports both known strategy flags as
+    explicit False. Home Assistant displays this as "Custom" but cannot select
+    it: no confirmed command payload exists (other Stream models reject
+    non-Self/AI strategy writes), so selecting Custom raises instead of sending
+    anything.
     """
 
     def __init__(
@@ -785,12 +786,12 @@ class EcoFlowStreamSelect(EcoFlowBaseEntity, SelectEntity):
         # Create reverse map for value to option
         self._value_to_option = {v: k for k, v in self._options_map.items()}
 
-        # Custom schedule mode has only been observed on Ultra X hardware, so
-        # only Ultra X entities offer it as a display option. Other Stream
+        # Custom schedule mode has been observed on Ultra X and AC Pro, so
+        # only those entities offer it as a display option. Other Stream
         # models keep the previous option set.
         self._supports_custom_display = (
             self._select_key == "operating_mode"
-            and coordinator.device_type in _ULTRA_X_DEVICE_TYPES
+            and coordinator.device_type in _CUSTOM_DISPLAY_DEVICE_TYPES
         )
         if self._supports_custom_display:
             self._options_map = {**self._options_map, "Custom": "custom"}
@@ -815,7 +816,8 @@ class EcoFlowStreamSelect(EcoFlowBaseEntity, SelectEntity):
             )
 
             # Other models keep the original truthiness interpretation and never
-            # show Custom; only Ultra X gets the strict both-False handling.
+            # show Custom; only Ultra X and AC Pro get the strict both-False
+            # handling.
             if not self._supports_custom_display:
                 if self_powered:
                     return "Self-Powered"
@@ -827,7 +829,8 @@ class EcoFlowStreamSelect(EcoFlowBaseEntity, SelectEntity):
                 return "Self-Powered"
             if ai_mode is True:
                 return "AI Mode"
-            # Custom is only the explicit both-False state on Ultra X. Missing,
+            # Custom is only the explicit both-False state on the observed
+            # models. Missing,
             # None, 0 or string values stay unknown, as does any other active
             # strategy flag we do not model.
             if (
