@@ -707,11 +707,13 @@ class EcoFlowDelta2Select(EcoFlowBaseEntity, SelectEntity):
 
 
 # Device types on which the app "Custom" schedule mode has been observed.
-# Conservative scope for issue #68: only Ultra X entities display Custom.
-# Plain "Stream Ultra" (non-X) is deliberately excluded.
+# Conservative scope for issue #68: Ultra X and AC Pro entities display Custom.
+# Plain "Stream Ultra" (non-X) and untested models are deliberately excluded.
 _ULTRA_X_DEVICE_TYPES = (
     DEVICE_TYPE_STREAM_ULTRA_X,
     "stream_ultra_x",
+    DEVICE_TYPE_STREAM_AC_PRO,
+    "Stream AC Pro",
 )
 
 

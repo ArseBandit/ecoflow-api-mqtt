@@ -1,7 +1,9 @@
 """Regression coverage for Stream Custom operating-mode display (issue #68).
 
-Drives the actual EcoFlowStreamSelect class with a fake coordinator (no I/O).
-Custom is display-only: selecting it must raise without any device request.
+Drives the actual EcoFlowStreamSelect class with a fake coordinator (no I/O)
+for both observed devices (Stream Ultra X and Stream AC Pro). Custom is
+display-only: selecting it must raise without any device request. Plain
+"Stream Ultra" (non-X) and untested models keep the previous behavior.
 """
 
 from __future__ import annotations
@@ -14,6 +16,10 @@ from typing import Any
 
 from homeassistant.exceptions import HomeAssistantError
 
+from custom_components.ecoflow_api.const import (
+    DEVICE_TYPE_STREAM_AC_PRO,
+    DEVICE_TYPE_STREAM_ULTRA_X,
+)
 from custom_components.ecoflow_api.select import (
     EcoFlowStreamSelect,
     STREAM_ULTRA_X_SELECT_DEFINITIONS,
@@ -24,9 +30,14 @@ FIXTURE = json.loads(
 )
 DEF = STREAM_ULTRA_X_SELECT_DEFINITIONS["operating_mode"]
 
+# Observed model aliases: the constant plus the literal strings accepted by the
+# Stream class selection. Plain "stream_ultra"/"Stream Ultra" is NOT here.
+OBSERVED_DEVICE_TYPES = (DEVICE_TYPE_STREAM_ULTRA_X, "stream_ultra_x",
+                         DEVICE_TYPE_STREAM_AC_PRO, "Stream AC Pro")
+
 
 def make_entity(
-    data: dict[str, Any] | None, device_type: str = "stream_ultra_x"
+    data: dict[str, Any] | None, device_type: str = DEVICE_TYPE_STREAM_ULTRA_X
 ) -> tuple[EcoFlowStreamSelect, SimpleNamespace]:
     """Build the real entity with a fake coordinator (no I/O)."""
     coordinator = SimpleNamespace(
@@ -52,24 +63,38 @@ def make_entity(
 
 
 class StreamCustomDisplayTest(unittest.TestCase):
-    def test_ultra_x_offers_custom_option(self) -> None:
-        entity, _ = make_entity({})
-        self.assertIn("Custom", entity.options)
-        self.assertIn("Self-Powered", entity.options)
-        self.assertIn("AI Mode", entity.options)
+    def test_observed_models_offer_custom_option(self) -> None:
+        for device_type in OBSERVED_DEVICE_TYPES:
+            with self.subTest(device_type=device_type):
+                entity, _ = make_entity({}, device_type=device_type)
+                self.assertIn("Custom", entity.options)
+                self.assertIn("Self-Powered", entity.options)
+                self.assertIn("AI Mode", entity.options)
 
-    def test_other_stream_model_has_no_custom_option(self) -> None:
-        for device_type in ("stream_ac_pro", "stream_ultra"):
+    def test_plain_ultra_and_untested_models_have_no_custom_option(self) -> None:
+        for device_type in ("stream_ultra", "Stream Ultra", "stream_micro_inverter"):
             with self.subTest(device_type=device_type):
                 entity, _ = make_entity({}, device_type=device_type)
                 self.assertNotIn("Custom", entity.options)
 
-    def test_captured_ai_payload_reports_ai_mode(self) -> None:
-        entity, _ = make_entity(dict(FIXTURE["ai_mode"]))
+    def test_ultra_x_captured_ai_reports_ai_mode(self) -> None:
+        entity, _ = make_entity(dict(FIXTURE["ultra_x_ai"]))
         self.assertEqual(entity.current_option, "AI Mode")
 
-    def test_captured_custom_payload_reports_custom(self) -> None:
-        entity, _ = make_entity(dict(FIXTURE["custom_mode"]))
+    def test_ultra_x_captured_custom_reports_custom(self) -> None:
+        entity, _ = make_entity(dict(FIXTURE["ultra_x_custom"]))
+        self.assertEqual(entity.current_option, "Custom")
+
+    def test_ac_pro_captured_ai_reports_ai_mode(self) -> None:
+        entity, _ = make_entity(
+            dict(FIXTURE["ac_pro_ai"]), device_type=DEVICE_TYPE_STREAM_AC_PRO
+        )
+        self.assertEqual(entity.current_option, "AI Mode")
+
+    def test_ac_pro_captured_custom_reports_custom(self) -> None:
+        entity, _ = make_entity(
+            dict(FIXTURE["ac_pro_custom"]), device_type=DEVICE_TYPE_STREAM_AC_PRO
+        )
         self.assertEqual(entity.current_option, "Custom")
 
     def test_custom_nested_form_reports_custom(self) -> None:
@@ -141,33 +166,35 @@ class StreamCustomDisplayTest(unittest.TestCase):
         self.assertIsNone(entity.current_option)
 
     def test_other_model_uses_truthiness_not_strict_true(self) -> None:
-        # Plain/other Stream models keep old truthiness: a truthy non-bool still
-        # reports the mode, and the strict both-False Custom path never applies.
         entity, _ = make_entity(
             {"energyStrategyOperateMode.operateSelfPoweredOpen": 1},
             device_type="stream_ultra",
         )
         self.assertEqual(entity.current_option, "Self-Powered")
-        entity2, _ = make_entity(dict(FIXTURE["custom_mode"]), device_type="stream_ultra")
+        entity2, _ = make_entity(dict(FIXTURE["ultra_x_custom"]), device_type="stream_ultra")
         self.assertIsNone(entity2.current_option)
 
-    def test_custom_both_false_on_other_model_stays_unknown(self) -> None:
+    def test_custom_both_false_on_plain_ultra_stays_unknown(self) -> None:
         entity, _ = make_entity(
-            dict(FIXTURE["custom_mode"]), device_type="stream_ac_pro"
+            dict(FIXTURE["ultra_x_custom"]), device_type="stream_ultra"
         )
         self.assertIsNone(entity.current_option)
 
 
 class StreamCustomSelectRejectTest(unittest.IsolatedAsyncioTestCase):
     async def test_selecting_custom_raises_without_device_request(self) -> None:
-        entity, coordinator = make_entity(dict(FIXTURE["custom_mode"]))
-        with self.assertRaises(HomeAssistantError):
-            await entity.async_select_option("Custom")
-        self.assertEqual(coordinator.calls, [])
-        self.assertEqual(coordinator.refreshes, 0)
+        for device_type in OBSERVED_DEVICE_TYPES:
+            with self.subTest(device_type=device_type):
+                entity, coordinator = make_entity(
+                    dict(FIXTURE["ultra_x_custom"]), device_type=device_type
+                )
+                with self.assertRaises(HomeAssistantError):
+                    await entity.async_select_option("Custom")
+                self.assertEqual(coordinator.calls, [])
+                self.assertEqual(coordinator.refreshes, 0)
 
     async def test_self_powered_payload_unchanged(self) -> None:
-        entity, coordinator = make_entity(dict(FIXTURE["ai_mode"]))
+        entity, coordinator = make_entity(dict(FIXTURE["ultra_x_ai"]))
         await entity.async_select_option("Self-Powered")
         self.assertEqual(len(coordinator.calls), 1)
         self.assertEqual(
@@ -176,7 +203,7 @@ class StreamCustomSelectRejectTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_ai_mode_payload_unchanged(self) -> None:
-        entity, coordinator = make_entity(dict(FIXTURE["custom_mode"]))
+        entity, coordinator = make_entity(dict(FIXTURE["ultra_x_custom"]))
         await entity.async_select_option("AI Mode")
         self.assertEqual(len(coordinator.calls), 1)
         self.assertEqual(
@@ -189,7 +216,7 @@ class StreamCustomSelectRejectTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_invalid_option_sends_nothing(self) -> None:
-        entity, coordinator = make_entity(dict(FIXTURE["ai_mode"]))
+        entity, coordinator = make_entity(dict(FIXTURE["ultra_x_ai"]))
         await entity.async_select_option("Turbo")
         self.assertEqual(coordinator.calls, [])
 
