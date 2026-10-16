@@ -3625,6 +3625,15 @@ POWERSTREAM_MICRO_INVERTER_SENSOR_DEFINITIONS = {
         "icon": "mdi:lightning-bolt",
         "value_map": lambda x: x / 10 if x is not None else None,
     },
+        "inverter_output_power": {
+        "name": "Inverter Output Power",
+        "key": "20_1.invOutputWatts",
+        "unit": UnitOfPower.WATT,
+        "device_class": SensorDeviceClass.POWER,
+        "state_class": SensorStateClass.MEASUREMENT,
+        "icon": "mdi:transmission-tower-export",
+        "value_map": lambda x: x / 10 if x is not None else None,  # API returns 0.1W (deciwatts)
+    },
     "charge_remaining_time": {
         "name": "Charge Remaining Time",
         "key": "20_1.chgRemainTime",
