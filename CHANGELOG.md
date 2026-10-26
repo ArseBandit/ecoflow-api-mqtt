@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.27] - 2026-10-26
+
+### Added
+
+- **PowerStream Inverter Output Power sensor (#83, PR #86)** — Adds an `Inverter Output Power` sensor for the PowerStream Micro Inverter, reading the actual AC output power from `20_1.invOutputWatts`. The device reports the value in 0.1 W units, so it is divided by 10 to give watts. Thanks to @rainerbreit-dot for the contribution and for verifying the readings against the EcoFlow app on two PowerStreams.
+
+### Validation
+
+- Added `tests/test_powerstream_inverter_output_power.py` covering the deciwatt-to-watt conversion, flat and nested quota data, zero, missing and `None` values, and runtime value changes (tests by @ArseBandit).
+- 42 of 43 tests pass; the one failure (`test_energy_sensor_can_be_constructed`) is a pre-existing incompatibility with the installed Home Assistant test version and is unrelated.
+
 ## [1.10.26] - 2026-10-10
 
 ### Fixed
