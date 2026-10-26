@@ -364,7 +364,9 @@ broker connection alone is not device telemetry. Two diagnostic sensors
 
 - `Last MQTT message received` — the last quota-telemetry receipt (UTC).
   Advanced only by device telemetry; broker connect/reconnect, REST polls,
-  command ACKs and other topics never move it.
+  command ACKs and other topics never move it. The state is published at most
+  once per minute (the first receipt immediately) to keep the Home Assistant
+  database small, so it can lag the real last receipt by up to a minute.
 - `Consecutive silent watchdog reconnects` — watchdog reconnects since the
   last genuinely new MQTT data. The reset stays data-change-based: identical
   live values and broker replays never reset it.

@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any
 
@@ -409,6 +409,72 @@ async def test_diagnostic_entities_write_only_on_change() -> None:
     coordinator.async_update_mqtt_diagnostics()  # no listeners yet; direct check:
     counter._handle_coordinator_update()
     assert counter_writes == [1]
+
+
+async def test_last_receipt_publish_is_throttled() -> None:
+    """Receipt state is published at most once per interval, first one at once."""
+    base = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    interval = sensor_module.MQTT_RECEIPT_PUBLISH_INTERVAL
+    coordinator = make_diag_coordinator()
+    last = EcoFlowLastMqttMessageSensor(coordinator, make_entry())
+    writes: list = []
+    last.async_write_ha_state = lambda *a, **k: writes.append(1)  # type: ignore[method-assign]
+
+    # First receipt (None -> value) is published immediately.
+    coordinator._last_mqtt_telemetry_time = base
+    last._handle_mqtt_diagnostic_update()
+    assert len(writes) == 1
+
+    # Receipts inside the interval are skipped, whichever path delivers them.
+    for seconds in (1, 5, 30):
+        coordinator._last_mqtt_telemetry_time = base + timedelta(seconds=seconds)
+        last._handle_mqtt_diagnostic_update()
+        last._handle_coordinator_update()
+    just_inside = base + interval - timedelta(seconds=1)
+    coordinator._last_mqtt_telemetry_time = just_inside
+    last._handle_mqtt_diagnostic_update()
+    assert len(writes) == 1
+
+    # Exactly one interval after the published value, it is published.
+    coordinator._last_mqtt_telemetry_time = base + interval
+    last._handle_mqtt_diagnostic_update()
+    assert len(writes) == 2
+
+    # The window restarts from the newly published value.
+    coordinator._last_mqtt_telemetry_time = base + interval + timedelta(seconds=10)
+    last._handle_mqtt_diagnostic_update()
+    assert len(writes) == 2
+    coordinator._last_mqtt_telemetry_time = base + 2 * interval
+    last._handle_mqtt_diagnostic_update()
+    assert len(writes) == 3
+
+
+async def test_last_receipt_backwards_clock_is_published() -> None:
+    """A value earlier than the published one (clock step) is not held back."""
+    base = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    coordinator = make_diag_coordinator()
+    last = EcoFlowLastMqttMessageSensor(coordinator, make_entry())
+    writes: list = []
+    last.async_write_ha_state = lambda *a, **k: writes.append(1)  # type: ignore[method-assign]
+
+    coordinator._last_mqtt_telemetry_time = base
+    last._handle_mqtt_diagnostic_update()
+    assert len(writes) == 1
+    coordinator._last_mqtt_telemetry_time = base - timedelta(seconds=5)
+    last._handle_mqtt_diagnostic_update()
+    assert len(writes) == 2
+
+
+async def test_silent_reconnect_counter_is_not_throttled() -> None:
+    """Every counter change reaches HA at once; only the timestamp is limited."""
+    coordinator = make_diag_coordinator()
+    counter = EcoFlowSilentReconnectsSensor(coordinator, make_entry())
+    writes: list = []
+    counter.async_write_ha_state = lambda *a, **k: writes.append(1)  # type: ignore[method-assign]
+    for count in (1, 2, 3, 0):
+        coordinator._mqtt_silent_reconnects = count
+        counter._handle_mqtt_diagnostic_update()
+    assert len(writes) == 4
 
 
 async def test_diagnostic_listener_notifies_without_fanout() -> None:

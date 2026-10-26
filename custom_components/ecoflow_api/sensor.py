@@ -5147,8 +5147,21 @@ class EcoFlowMQTTModeSensor(EcoFlowBaseEntity, SensorEntity):
         return "mdi:cloud-off"
 
 
+# The receipt timestamp changes on every telemetry message (about every few
+# seconds per device). Writing each one would add a state_changed event, and a
+# recorder row, per message. Offline detection needs minute-level resolution
+# at most, so a new value is published only when it is at least this much
+# later than the one already published.
+MQTT_RECEIPT_PUBLISH_INTERVAL = timedelta(seconds=60)
+
+
 class EcoFlowLastMqttMessageSensor(EcoFlowBaseEntity, SensorEntity):
-    """Last device quota-telemetry receipt (TIMESTAMP, diagnostic)."""
+    """Last device quota-telemetry receipt (TIMESTAMP, diagnostic).
+
+    The state is published at most once per ``MQTT_RECEIPT_PUBLISH_INTERVAL``
+    (the first receipt is published immediately), so it may lag the real last
+    receipt by up to that interval.
+    """
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.TIMESTAMP
@@ -5189,20 +5202,35 @@ class EcoFlowLastMqttMessageSensor(EcoFlowBaseEntity, SensorEntity):
 
     @callback
     def _handle_mqtt_diagnostic_update(self) -> None:
-        """Write state only when the telemetry timestamp actually changed."""
-        self._write_if_changed()
+        """Publish the telemetry timestamp, at most once per interval."""
+        self._write_if_due()
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Write state only when the telemetry timestamp actually changed."""
-        self._write_if_changed()
+        """Publish the telemetry timestamp, at most once per interval."""
+        self._write_if_due()
 
-    def _write_if_changed(self) -> None:
-        """Write HA state when the timestamp differs from the last publish."""
+    def _write_if_due(self) -> None:
+        """Write HA state when the timestamp changed enough since the last publish.
+
+        The first receipt (None -> value) is always published. After that a
+        newer value is skipped until it is ``MQTT_RECEIPT_PUBLISH_INTERVAL``
+        later than the published one. A value that moved backwards (clock
+        adjustment) is published immediately so the state never stays ahead.
+        """
         new_value = self.native_value
-        if new_value != self._last_published:
-            self._last_published = new_value
-            self.async_write_ha_state()
+        published = self._last_published
+        if new_value == published:
+            return
+        if (
+            new_value is not None
+            and published is not None
+            and new_value >= published
+            and new_value - published < MQTT_RECEIPT_PUBLISH_INTERVAL
+        ):
+            return
+        self._last_published = new_value
+        self.async_write_ha_state()
 
 
 class EcoFlowSilentReconnectsSensor(EcoFlowBaseEntity, SensorEntity):
